@@ -532,3 +532,190 @@
 .t-input-subtitle .t-descr_xxs {font-size: 12px!important; opacity: .6;}
 .t-input-group_rd .t-descr_xxs {font-size: 12px!important; opacity: .6;}
 .t-input {height: 56px;}
+
+
+.uc-anketa.cult-form-first-step .cult-form-btn-prev {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Hide step counter and progress on last step */
+.uc-anketa.cult-form-last-step .t-form__screen-number-container,
+.uc-anketa.cult-form-last-step .t-form__screen-progress,
+.uc-anketa.cult-form-last-step .t-form__screen-progressbar {
+  display: none !important;
+}
+
+/* Prev: quiet system button */
+.uc-anketa .cult-form-btn-prev {
+  position: relative !important;
+
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+
+  padding: 0 !important;
+  border-radius: 999px !important;
+
+  background: rgba(19, 19, 19, 0.035) !important;
+  border: 1px solid rgba(19, 19, 19, 0.12) !important;
+
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  text-indent: -9999px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  box-shadow: none !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+
+  flex: 0 0 42px !important;
+  flex-shrink: 0 !important;
+
+  opacity: 0.55 !important;
+
+  transition:
+    opacity 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease !important;
+}
+
+/* Prev arrow line */
+.uc-anketa .cult-form-btn-prev::before {
+  content: "" !important;
+  position: absolute !important;
+
+  left: 50% !important;
+  top: 50% !important;
+
+  width: 17px !important;
+  height: 2px !important;
+
+  background: #131313 !important;
+  border-radius: 999px !important;
+
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Prev arrow head */
+.uc-anketa .cult-form-btn-prev::after {
+  content: "" !important;
+  position: absolute !important;
+
+  left: calc(50% - 8px) !important;
+  top: 50% !important;
+
+  width: 7px !important;
+  height: 7px !important;
+
+  border-left: 2px solid #131313 !important;
+  border-bottom: 2px solid #131313 !important;
+
+  transform: translateY(-50%) rotate(45deg) !important;
+}
+
+/* Prev hover */
+@media (hover: hover) {
+  .uc-anketa .cult-form-btn-prev:hover {
+    opacity: 1 !important;
+    background: rgba(19, 19, 19, 0.055) !important;
+    border-color: rgba(19, 19, 19, 0.22) !important;
+  }
+}
+
+/* Next: main CTA */
+.uc-anketa .cult-form-btn-next {
+  position: relative !important;
+  padding-right: 54px !important;
+}
+
+/* Next arrow line */
+.uc-anketa .cult-form-btn-next::before {
+  content: "" !important;
+  position: absolute !important;
+
+  right: 30px !important;
+  top: 50% !important;
+
+  width: 17px !important;
+  height: 2px !important;
+
+  background: currentColor !important;
+  border-radius: 999px !important;
+
+  transform: translateY(-50%) !important;
+}
+
+/* Next arrow head */
+.uc-anketa .cult-form-btn-next::after {
+  content: "" !important;
+  position: absolute !important;
+
+  right: 29px !important;
+  top: 50% !important;
+
+  width: 7px !important;
+  height: 7px !important;
+
+  border-right: 2px solid currentColor !important;
+  border-top: 2px solid currentColor !important;
+
+  transform: translateY(-50%) rotate(45deg) !important;
+}
+
+/* Mobile */
+@media screen and (max-width: 680px) {
+  .uc-anketa .cult-form-btn-prev {
+    width: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+
+    flex: 0 0 52px !important;
+    flex-basis: 52px !important;
+
+    border-radius: 50% !important;
+
+    opacity: 0.42 !important;
+
+    background: rgba(19, 19, 19, 0.028) !important;
+    border: 1px solid rgba(19, 19, 19, 0.10) !important;
+  }
+
+  .uc-anketa .cult-form-btn-prev::before {
+    width: 16px !important;
+  }
+
+  .uc-anketa .cult-form-btn-prev::after {
+    left: calc(50% - 7px) !important;
+    width: 6px !important;
+    height: 6px !important;
+  }
+
+  .uc-anketa .cult-form-btn-next {
+    padding-right: 46px !important;
+  }
+
+  .uc-anketa .cult-form-btn-next::before {
+    right: 25px !important;
+    width: 15px !important;
+  }
+
+  .uc-anketa .cult-form-btn-next::after {
+    right: 24px !important;
+    width: 6px !important;
+    height: 6px !important;
+  }
+}
