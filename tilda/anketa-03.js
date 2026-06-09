@@ -1,189 +1,244 @@
 (function () {
-  'use strict';
+  var ROOT_SELECTOR = '.uc-anketa';
+  var YM_COUNTER_ID = 108717553;
 
-  var DEBUG = !!(window.seenPagesConfig && window.seenPagesConfig.debug);
-  var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-  var SUCCESS_URL_ATTRIBUTES = [
-    'data-success-url',
-    'data-successurl',
-    'data-success-page',
-    'data-success-redirect',
-    'data-redirect-url',
-    'data-redirect',
-    'success-url'
-  ];
-  var SUCCESS_URL_INPUT_NAMES = [
-    'successurl',
-    'success_url',
-    'successUrl',
-    'redirect',
-    'redirect_url',
-    'redirectUrl',
-    'form_success_url',
-    'tilda_success_url'
-  ];
+  var sentSteps = {};
+  var leadSent = false;
+  var DEBUG = false;
 
-  function log() {
+  var goalMap = {
+    1: 'anketa_01',
+    2: 'anketa_02',
+    3: 'anketa_03',
+    4: 'anketa_04',
+    5: 'anketa_05',
+    6: 'anketa_06'
+  };
+
+  function debugLog() {
     if (!DEBUG) return;
-
     try {
-      console.log.apply(console, ['[CULT-ANKETA-SUCCESS-UTM]'].concat([].slice.call(arguments)));
+      console.log.apply(console, ['[CULT anketa analytics]'].concat([].slice.call(arguments)));
     } catch (e) {}
   }
 
-  function getPageParams() {
+  function sendYMGoal(goalName, params) {
+    if (!goalName) return;
+
+    debugLog('YM goal:', goalName, params || {});
+
     try {
-      return new URLSearchParams(window.location.search);
-    } catch (e) {
-      return new URLSearchParams('');
-    }
-  }
-
-  function hasIncomingUtm(params) {
-    if (!params) return false;
-
-    for (var i = 0; i < UTM_KEYS.length; i++) {
-      if (params.get(UTM_KEYS[i])) return true;
-    }
-
-    return false;
-  }
-
-  function getUrl(value) {
-    try {
-      return new URL(value, window.location.href);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function isTargetUrl(value) {
-    if (!value) return false;
-
-    return value.indexOf('CULTAIschoolbot') !== -1 ||
-      value.indexOf('r.bothelp.io/tg') !== -1;
-  }
-
-  function rewriteUrl(value, pageParams) {
-    var url = getUrl(value);
-
-    if (!url) return '';
-
-    UTM_KEYS.forEach(function (key) {
-      var incomingValue = pageParams.get(key);
-
-      if (incomingValue) {
-        url.searchParams.set(key, incomingValue);
+      if (typeof window.ym === 'function') {
+        window.ym(YM_COUNTER_ID, 'reachGoal', goalName, params || {});
       } else {
-        url.searchParams.delete(key);
+        debugLog('YM is not available');
       }
-    });
-
-    return url.toString();
+    } catch (e) {
+      console.warn('[CULT analytics] YM error:', goalName, e);
+    }
   }
 
-  function updateSuccessAttributes(root, pageParams) {
-    var updated = 0;
+  function sendFBQ(eventName, params) {
+    debugLog('fbq custom:', eventName, params || {});
 
-    SUCCESS_URL_ATTRIBUTES.forEach(function (attrName) {
-      var selector = '[' + attrName + ']';
-
-      root.querySelectorAll(selector).forEach(function (element) {
-        var value = element.getAttribute(attrName) || '';
-
-        if (!isTargetUrl(value)) return;
-
-        var rewritten = rewriteUrl(value, pageParams);
-
-        if (!rewritten) return;
-        if (rewritten === value) return;
-
-        element.setAttribute(attrName, rewritten);
-        updated += 1;
-      });
-    });
-
-    return updated;
+    try {
+      if (typeof window.fbq === 'function') {
+        window.fbq('trackCustom', eventName, params || {});
+      } else {
+        debugLog('fbq is not available');
+      }
+    } catch (e) {
+      console.warn('[CULT analytics] fbq error:', eventName, e);
+    }
   }
 
-  function updateSuccessInputs(root, pageParams) {
-    var updated = 0;
-    var selector = SUCCESS_URL_INPUT_NAMES.map(function (name) {
-      return 'input[name="' + name + '"], textarea[name="' + name + '"]';
-    }).join(',');
+  function getStepData(root) {
+    var items = root.querySelectorAll('span, div');
 
-    if (!selector) return updated;
+    for (var i = 0; i < items.length; i++) {
+      var text = (items[i].textContent || '').trim();
+      var match = text.match(/^(\d+)\s*\/\s*(\d+)$/);
 
-    root.querySelectorAll(selector).forEach(function (field) {
-      var value = field.value || field.getAttribute('value') || '';
-
-      if (!isTargetUrl(value)) return;
-
-      var rewritten = rewriteUrl(value, pageParams);
-
-      if (!rewritten) return;
-      if (rewritten === value) return;
-
-      field.value = rewritten;
-      field.setAttribute('value', rewritten);
-      updated += 1;
-    });
-
-    return updated;
-  }
-
-  function updateSuccessUrls() {
-    var pageParams = getPageParams();
-    var updatedSuccessAttrs = 0;
-    var updatedSuccessInputs = 0;
-
-    if (!hasIncomingUtm(pageParams)) {
-      log('incoming UTM not found, default anketa success URLs kept');
-      return 0;
+      if (match) {
+        return {
+          current: Number(match[1]),
+          total: Number(match[2])
+        };
+      }
     }
 
-    updatedSuccessAttrs = updateSuccessAttributes(document, pageParams);
-    updatedSuccessInputs = updateSuccessInputs(document, pageParams);
+    return null;
+  }
 
-    if (updatedSuccessAttrs || updatedSuccessInputs) {
-      log('updated:', {
-        successAttributes: updatedSuccessAttrs,
-        successInputs: updatedSuccessInputs
+  function trackCurrentStep() {
+    var root = document.querySelector(ROOT_SELECTOR);
+    if (!root) {
+      debugLog('root not found:', ROOT_SELECTOR);
+      return;
+    }
+
+    var stepData = getStepData(root);
+    if (!stepData || !stepData.current) {
+      debugLog('step not detected');
+      return;
+    }
+
+    var step = stepData.current;
+    var goalName = goalMap[step];
+
+    debugLog('current step detected:', stepData);
+
+    if (!goalName) {
+      debugLog('no YM goal for step:', step);
+      return;
+    }
+
+    if (sentSteps[step]) {
+      debugLog('step already sent:', step);
+      return;
+    }
+
+    sentSteps[step] = true;
+
+    if (step === 1) {
+      sendYMGoal('anketa_start', {
+        step: '01'
       });
     }
 
-    return updatedSuccessAttrs + updatedSuccessInputs;
+    sendYMGoal(goalName, {
+      step: String(step).padStart(2, '0'),
+      total: stepData.total || 6
+    });
   }
 
-  function observeChanges() {
-    var timer = null;
+  function collectQual(form) {
+    var qual = {
+      source: 'anketa',
+      form: 'cult_ai_waitlist',
+      product: 'cult_ai_course'
+    };
 
-    var observer = new MutationObserver(function () {
-      clearTimeout(timer);
-      timer = setTimeout(updateSuccessUrls, 100);
+    if (!form || !form.elements) return qual;
+
+    Array.prototype.forEach.call(form.elements, function (input) {
+      if (!input.name) return;
+
+      var name = input.name;
+      var value = '';
+
+      if (input.type === 'radio' || input.type === 'checkbox') {
+        if (!input.checked) return;
+        value = input.value || 'yes';
+      } else {
+        value = input.value || '';
+      }
+
+      if (
+        name === 'Name' ||
+        name === 'name' ||
+        name === 'Email' ||
+        name === 'email' ||
+        name === 'Phone' ||
+        name === 'phone' ||
+        name === 'Телефон' ||
+        name === 'Почта'
+      ) {
+        return;
+      }
+
+      qual[name] = value;
     });
 
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: SUCCESS_URL_ATTRIBUTES.concat(['value'])
+    return qual;
+  }
+
+  function trackLead(form) {
+    if (leadSent) {
+      debugLog('lead already sent');
+      return;
+    }
+
+    leadSent = true;
+
+    var qual = collectQual(form);
+    debugLog('lead success detected, qual:', qual);
+
+    sendYMGoal('anketa_lead', {
+      source: 'anketa'
     });
+
+    sendFBQ('Qual', {
+      source: 'anketa',
+      form: 'cult_ai_waitlist',
+      product: 'cult_ai_course',
+      qual: qual
+    });
+
+    try {
+      if (typeof window.fbq === 'function') {
+        debugLog('fbq standard Lead:', {
+          content_name: 'cult_ai_waitlist',
+          content_category: 'qualified_form',
+          source: 'anketa'
+        });
+
+        window.fbq('track', 'Lead', {
+          content_name: 'cult_ai_waitlist',
+          content_category: 'qualified_form',
+          source: 'anketa'
+        });
+      } else {
+        debugLog('fbq is not available for Lead');
+      }
+    } catch (e) {
+      console.warn('[CULT analytics] fbq Lead error:', e);
+    }
+  }
+
+  function wrapTildaSuccessCallback() {
+    if (window.__cultAnketaAnalyticsWrapped) {
+      debugLog('t823_onSuccess already wrapped');
+      return;
+    }
+
+    if (typeof window.t823_onSuccess !== 'function') {
+      debugLog('t823_onSuccess is not available yet');
+      return;
+    }
+
+    var originalT823OnSuccess = window.t823_onSuccess;
+    window.__cultAnketaAnalyticsWrapped = true;
+
+    debugLog('t823_onSuccess wrapped');
+
+    window.t823_onSuccess = function (form) {
+      debugLog('t823_onSuccess fired');
+      trackLead(form);
+
+      setTimeout(function () {
+        originalT823OnSuccess(form);
+      }, 350);
+    };
   }
 
   function init() {
-    updateSuccessUrls();
+    debugLog('init');
 
-    setTimeout(updateSuccessUrls, 300);
-    setTimeout(updateSuccessUrls, 1000);
-    setTimeout(updateSuccessUrls, 2500);
+    trackCurrentStep();
+    wrapTildaSuccessCallback();
 
-    observeChanges();
+    setTimeout(trackCurrentStep, 300);
+    setTimeout(trackCurrentStep, 900);
+    setTimeout(wrapTildaSuccessCallback, 500);
+    setTimeout(wrapTildaSuccessCallback, 1200);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  document.addEventListener('DOMContentLoaded', init);
+  window.addEventListener('load', init);
+
+  document.addEventListener('click', function () {
+    setTimeout(trackCurrentStep, 150);
+    setTimeout(wrapTildaSuccessCallback, 150);
+  });
 })();
